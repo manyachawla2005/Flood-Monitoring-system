@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FloodSense — Flood Monitoring</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <!-- TOP NAV -->
+  <header class="navbar">
+    <div class="nav-brand">
+      <div class="brand-icon">🌊</div>
+      <span class="brand-name">FloodSense</span>
+      <span class="brand-tag">Remote Sensing Dashboard</span>
+    </div>
+    <nav class="nav-links">
+      <a class="nav-link active" onclick="showPage('dashboard')">Dashboard</a>
+      <a class="nav-link" onclick="showPage('analysis')">SAR Analysis</a>
+      <a class="nav-link" onclick="showPage('rainfall')">Rainfall</a>
+      <a class="nav-link" onclick="showPage('elevation')">Elevation</a>
+      <a class="nav-link" onclick="showPage('reports')">Reports</a>
+    </nav>
+    <div class="nav-right">
+      <select class="region-select" id="aoi-select" onchange="updateAOI()">
+        <option value="assam">📍 Assam, India</option>
+        <option value="kerala">📍 Kerala, India</option>
+        <option value="bihar">📍 Bihar, India</option>
+        <option value="bangladesh">📍 Bangladesh</option>
+      </select>
+      <div class="clock" id="clock">00:00 UTC</div>
+    </div>
+  </header>
+
+  <main class="main">
+
+    <!-- ══════════════════════════════════
+         DASHBOARD
+    ══════════════════════════════════ -->
+    <div id="page-dashboard" class="page active">
+
+      <!-- Alert banner -->
+      <div class="alert-banner">
+        <span class="alert-dot"></span>
+        <strong>3 Active Alerts</strong> — Brahmaputra embankment breach detected · Jorhat rainfall threshold exceeded
+      </div>
+
+      <!-- Stats row -->
+      <div class="stats-row">
+        <div class="stat-card red">
+          <div class="stat-icon">🌊</div>
+          <div class="stat-body">
+            <div class="stat-value">2,847 km²</div>
+            <div class="stat-label">Flooded Area</div>
+            <div class="stat-change">▲ 12.4% since yesterday</div>
+          </div>
+        </div>
+        <div class="stat-card orange">
+          <div class="stat-icon">🌧️</div>
+          <div class="stat-body">
+            <div class="stat-value">187 mm</div>
+            <div class="stat-label">Rainfall (24h)</div>
+            <div class="stat-change">▲ 31% above average</div>
+          </div>
+        </div>
+        <div class="stat-card blue">
+          <div class="stat-icon">📡</div>
+          <div class="stat-body">
+            <div class="stat-value">14 scenes</div>
+            <div class="stat-label">SAR Images Processed</div>
+            <div class="stat-change">Sentinel-1 GRD today</div>
+          </div>
+        </div>
+        <div class="stat-card red">
+          <div class="stat-icon">⚠️</div>
+          <div class="stat-body">
+            <div class="stat-value">0.74</div>
+            <div class="stat-label">Flood Risk Index</div>
+            <div class="stat-change">HIGH — weighted overlay</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Map + Risk panel -->
+      <div class="two-col">
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Flood Extent Map</h2>
+            <div class="layer-btns">
+              <button class="layer-btn active" onclick="toggleLayer(this)">Flood Zones</button>
+              <button class="layer-btn" onclick="toggleLayer(this)">Rainfall</button>
+              <button class="layer-btn" onclick="toggleLayer(this)">Elevation</button>
+            </div>
+          </div>
+          <div id="map" class="map"></div>
+          <div class="map-legend">
+            <span class="legend-dot red"></span> High Risk &nbsp;
+            <span class="legend-dot orange"></span> Moderate &nbsp;
+            <span class="legend-dot green"></span> Low Risk &nbsp;
+            <span class="legend-dot blue"></span> Flood Extent
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Risk Zones</h2>
+            <span class="badge red">FRI Ranked</span>
+          </div>
+          <div class="risk-list">
+            <div class="risk-item">
+              <div class="risk-left">
+                <span class="risk-dot red"></span>
+                <div>
+                  <div class="risk-name">Lower Brahmaputra</div>
+                  <div class="risk-sub">1,204 km² flooded</div>
+                </div>
+              </div>
+              <div class="risk-score red">0.82</div>
+            </div>
+            <div class="risk-item">
+              <div class="risk-left">
+                <span class="risk-dot red"></span>
+                <div>
+                  <div class="risk-name">Kaziranga Buffer</div>
+                  <div class="risk-sub">891 km² flooded</div>
+                </div>
+              </div>
+              <div class="risk-score red">0.78</div>
+            </div>
+            <div class="risk-item">
+              <div class="risk-left">
+                <span class="risk-dot orange"></span>
+                <div>
+                  <div class="risk-name">Dibrugarh District</div>
+                  <div class="risk-sub">520 km² flooded</div>
+                </div>
+              </div>
+              <div class="risk-score orange">0.61</div>
+            </div>
+            <div class="risk-item">
+              <div class="risk-left">
+                <span class="risk-dot orange"></span>
+                <div>
+                  <div class="risk-name">Jorhat Plains</div>
+                  <div class="risk-sub">232 km² flooded</div>
+                </div>
+              </div>
+              <div class="risk-score orange">0.54</div>
+            </div>
+            <div class="risk-item">
+              <div class="risk-left">
+                <span class="risk-dot green"></span>
+                <div>
+                  <div class="risk-name">Upper Assam Hills</div>
+                  <div class="risk-sub">No flooding detected</div>
+                </div>
+              </div>
+              <div class="risk-score green">0.28</div>
+            </div>
+          </div>
+
+          <div class="fri-formula">
+            <div class="fri-title">FRI Formula</div>
+            <div class="fri-text">FRI = (0.4 × Flood Area) + (0.3 × Rainfall) + (0.3 × Elevation)</div>
+            <div class="fri-bars">
+              <div class="fri-bar-row"><span>Flood Area</span><div class="fri-track"><div class="fri-fill blue" style="width:40%"></div></div><span>40%</span></div>
+              <div class="fri-bar-row"><span>Rainfall</span><div class="fri-track"><div class="fri-fill orange" style="width:30%"></div></div><span>30%</span></div>
+              <div class="fri-bar-row"><span>Elevation</span><div class="fri-track"><div class="fri-fill red" style="width:30%"></div></div><span>30%</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Charts row -->
+      <div class="three-col">
+        <div class="card">
+          <div class="card-header"><h2 class="card-title">Rainfall (7 days)</h2></div>
+          <div class="chart-box"><canvas id="rainfallChart"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h2 class="card-title">Flood Extent (7 days)</h2></div>
+          <div class="chart-box"><canvas id="floodChart"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h2 class="card-title">Risk Distribution</h2></div>
+          <div class="chart-box"><canvas id="riskChart"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Event log -->
+      <div class="card">
+        <div class="card-header"><h2 class="card-title">Recent Events</h2></div>
+        <div class="event-list">
+          <div class="event-item">
+            <span class="event-dot red"></span>
+            <div class="event-body">
+              <div class="event-title">HIGH ALERT: Brahmaputra embankment breach detected</div>
+              <div class="event-time">Today, 06:22 UTC · SAR Change Detection</div>
+            </div>
+          </div>
+          <div class="event-item">
+            <span class="event-dot orange"></span>
+            <div class="event-body">
+              <div class="event-title">Rainfall threshold exceeded — Jorhat District (187mm/24h)</div>
+              <div class="event-time">Today, 04:10 UTC · CHIRPS Alert</div>
+            </div>
+          </div>
+          <div class="event-item">
+            <span class="event-dot blue"></span>
+            <div class="event-body">
+              <div class="event-title">Sentinel-1 pass completed — 14 scenes acquired</div>
+              <div class="event-time">Today, 02:47 UTC · Automatic</div>
+            </div>
+          </div>
+          <div class="event-item">
+            <span class="event-dot orange"></span>
+            <div class="event-body">
+              <div class="event-title">SVM classification updated — flood extent +12.4%</div>
+              <div class="event-time">Yesterday, 22:15 UTC · ML Pipeline</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /dashboard -->
+
+    <!-- ══════════════════════════════════
+         SAR ANALYSIS
+    ══════════════════════════════════ -->
+    <div id="page-analysis" class="page">
+
+      <div class="two-col">
+        <div class="card">
+          <div class="card-header"><h2 class="card-title">Upload SAR Scenes</h2></div>
+          <div class="card-body">
+            <div class="upload-box" onclick="simulateUpload('before')">
+              <div class="upload-icon">📡</div>
+              <div class="upload-label">Pre-Flood Scene</div>
+              <div class="upload-hint">Sentinel-1 GRD · .tif or .zip</div>
+            </div>
+            <div class="upload-box" onclick="simulateUpload('after')" style="margin-top:12px">
+              <div class="upload-icon">🌊</div>
+              <div class="upload-label">Post-Flood Scene</div>
+              <div class="upload-hint">Sentinel-1 GRD · .tif or .zip</div>
+            </div>
+            <div id="upload-log" class="log-box">
+              › Awaiting scene upload...<br>
+              › Pipeline: noise removal → calibration → terrain correction
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><h2 class="card-title">Model Parameters</h2></div>
+          <div class="param-list">
+            <div class="param-row">
+              <div class="param-info">
+                <div class="param-name">Backscatter Threshold</div>
+                <div class="param-hint">Water detection level (dB)</div>
+              </div>
+              <div class="param-control">
+                <input type="range" min="-25" max="-10" value="-18" step="0.5" oninput="this.nextElementSibling.textContent=this.value+'dB'">
+                <span class="param-val">-18dB</span>
+              </div>
+            </div>
+            <div class="param-row">
+              <div class="param-info">
+                <div class="param-name">SVM Kernel</div>
+                <div class="param-hint">Classification method</div>
+              </div>
+              <select class="param-select">
+                <option>RBF (Gaussian)</option>
+                <option>Linear</option>
+                <option>Polynomial</option>
+              </select>
+            </div>
+            <div class="param-row">
+              <div class="param-info">
+                <div class="param-name">SVM C Value</div>
+                <div class="param-hint">Regularization strength</div>
+              </div>
+              <div class="param-control">
+                <input type="range" min="1" max="100" value="10" step="1" oninput="this.nextElementSibling.textContent=this.value">
+                <span class="param-val">10</span>
+              </div>
+            </div>
+            <div class="param-row">
+              <div class="param-info">
+                <div class="param-name">Band Selection</div>
+                <div class="param-hint">MCDM — ELECTRE method</div>
+              </div>
+              <select class="param-select">
+                <option>Auto (ELECTRE)</option>
+                <option>All Bands</option>
+                <option>VV only</option>
+                <option>VH only</option>
+              </select>
+            </div>
+          </div>
+          <div class="card-footer">
+            <button class="run-btn" onclick="runAnalysis()">▶ Run Analysis</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Results -->
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">Results</h2>
+          <span class="result-status" id="analysis-status">Idle — configure parameters and run</span>
+        </div>
+        <div class="progress-bar" id="analysis-bar"></div>
+        <div class="results-row">
+          <div class="result-box"><div class="result-val green" id="r-acc">—</div><div class="result-label">Accuracy</div></div>
+          <div class="result-box"><div class="result-val red" id="r-px">—</div><div class="result-label">Flood Pixels</div></div>
+          <div class="result-box"><div class="result-val orange" id="r-area">—</div><div class="result-label">Area (km²)</div></div>
+          <div class="result-box"><div class="result-val blue" id="r-delta">—</div><div class="result-label">Change %</div></div>
+        </div>
+        <div id="analysis-log" class="log-box" style="margin:0 1.25rem 1.25rem">
+          › System ready. Click Run Analysis to begin.
+        </div>
+      </div>
+
+    </div><!-- /analysis -->
+
+    <!-- ══════════════════════════════════
+         RAINFALL
+    ══════════════════════════════════ -->
+    <div id="page-rainfall" class="page">
+      <div class="two-col">
+        <div class="card">
+          <div class="card-header"><h2 class="card-title">30-Day Rainfall (CHIRPS)</h2></div>
+          <div class="chart-box" style="padding:1.25rem"><canvas id="rainfallLong"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h2 class="card-title">Monthly Anomaly vs Average</h2></div>
+          <div class="chart-box" style="padding:1.25rem"><canvas id="anomalyChart"></canvas></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h2 class="card-title">Precipitation by Region</h2></div>
+        <table class="table">
+          <thead><tr><th>Region</th><th>7-day (mm)</th><th>30-day (mm)</th><th>Anomaly</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td>Lower Brahmaputra</td><td>893</td><td>2,140</td><td>+68%</td><td><span class="badge red">Extreme</span></td></tr>
+            <tr><td>Kaziranga</td><td>712</td><td>1,820</td><td>+42%</td><td><span class="badge red">High</span></td></tr>
+            <tr><td>Dibrugarh</td><td>540</td><td>1,340</td><td>+28%</td><td><span class="badge orange">Moderate</span></td></tr>
+            <tr><td>Jorhat</td><td>420</td><td>1,100</td><td>+15%</td><td><span class="badge orange">Watch</span></td></tr>
+            <tr><td>Upper Hills</td><td>210</td><td>620</td><td>-5%</td><td><span class="badge green">Normal</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════
+         ELEVATION
+    ══════════════════════════════════ -->
+    <div id="page-elevation" class="page">
+      <div class="two-col">
+        <div class="card">
+          <div class="card-header"><h2 class="card-title">Elevation Distribution (SRTM DEM)</h2></div>
+          <div class="chart-box" style="padding:1.25rem"><canvas id="elevChart"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h2 class="card-title">Vulnerability Zones</h2></div>
+          <div class="card-body">
+            <p style="font-size:13px;color:#666;margin-bottom:1.25rem">Areas below 50m ASL are at risk of inundation. 30.3% of the AOI falls in high-risk elevation zones.</p>
+            <div class="vuln-row"><div class="vuln-label"><span class="vuln-dot red"></span>0–10m (Extreme)</div><div class="vuln-bar-wrap"><div class="vuln-bar red" style="width:8.2%"></div></div><span class="vuln-pct">8.2%</span></div>
+            <div class="vuln-row"><div class="vuln-label"><span class="vuln-dot orange"></span>10–25m (High)</div><div class="vuln-bar-wrap"><div class="vuln-bar orange" style="width:22.1%"></div></div><span class="vuln-pct">22.1%</span></div>
+            <div class="vuln-row"><div class="vuln-label"><span class="vuln-dot blue"></span>25–50m (Moderate)</div><div class="vuln-bar-wrap"><div class="vuln-bar blue" style="width:31.4%"></div></div><span class="vuln-pct">31.4%</span></div>
+            <div class="vuln-row"><div class="vuln-label"><span class="vuln-dot green"></span>>50m (Safe)</div><div class="vuln-bar-wrap"><div class="vuln-bar green" style="width:38.3%"></div></div><span class="vuln-pct">38.3%</span></div>
+            <div class="info-note">⚠ SRTM DEM at 30m resolution — USGS/SRTMGL1_003</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════
+         REPORTS
+    ══════════════════════════════════ -->
+    <div id="page-reports" class="page">
+      <div class="card" style="margin-bottom:1.5rem">
+        <div class="card-header">
+          <h2 class="card-title">Active Alerts</h2>
+          <span class="badge red">3 Unacknowledged</span>
+        </div>
+        <table class="table">
+          <thead><tr><th>Severity</th><th>Location</th><th>Trigger</th><th>Time</th><th>FRI</th></tr></thead>
+          <tbody>
+            <tr><td><span class="badge red">High</span></td><td>Lower Brahmaputra</td><td>SAR Change Detection</td><td>06:22 UTC</td><td style="color:#e53e3e;font-weight:600">0.82</td></tr>
+            <tr><td><span class="badge orange">Moderate</span></td><td>Jorhat District</td><td>CHIRPS > 150mm/24h</td><td>04:10 UTC</td><td style="color:#dd6b20;font-weight:600">0.61</td></tr>
+            <tr><td><span class="badge orange">Moderate</span></td><td>Kaziranga Buffer</td><td>Flood Extent +18%</td><td>Yesterday</td><td style="color:#dd6b20;font-weight:600">0.78</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">SAR Scene Log</h2>
+        </div>
+        <table class="table">
+          <thead><tr><th>Scene ID</th><th>Date</th><th>Polarization</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td>S1A_IW_GRD_014</td><td>2024-07-02</td><td>IW/VV</td><td><span class="badge red">Flooded</span></td></tr>
+            <tr><td>S1A_IW_GRD_013</td><td>2024-07-02</td><td>IW/VH</td><td><span class="badge red">Flooded</span></td></tr>
+            <tr><td>S1A_IW_GRD_012</td><td>2024-07-01</td><td>IW/VV</td><td><span class="badge orange">Partial</span></td></tr>
+            <tr><td>S1A_IW_GRD_011</td><td>2024-07-01</td><td>IW/VH</td><td><span class="badge blue">Processing</span></td></tr>
+            <tr><td>S1B_IW_GRD_009</td><td>2024-06-30</td><td>IW/VV</td><td><span class="badge green">Clear</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <script src="js/map.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
